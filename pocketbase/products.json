@@ -37,6 +37,22 @@
       }
     },
     {
+      "name": "cost",
+      "type": "number",
+      "required": false,
+      "options": {
+        "min": 0
+      }
+    },
+    {
+      "name": "price",
+      "type": "number",
+      "required": false,
+      "options": {
+        "min": 0
+      }
+    },
+    {
       "name": "photo",
       "type": "file",
       "required": false,

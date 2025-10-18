@@ -72,6 +72,8 @@ def list_inventory(model: Optional[str] = None, color: Optional[str] = None, siz
             "model": product.get("name") if product else None,
             "color": product.get("color") if product else None,
             "gender": product.get("gender") if product else None,
+            "cost": product.get("cost") if product else None,
+            "price": product.get("price") if product else None,
             "size": variant.get("size") if variant else None,
             "quantity": rec.get("quantity"),
             "reserved": rec.get("reserved", 0),

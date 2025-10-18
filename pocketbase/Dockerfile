@@ -8,4 +8,6 @@ COPY products.json /pb/products.json
 COPY variants.json /pb/variants.json
 COPY inventory.json /pb/inventory.json
 COPY movements.json /pb/movements.json
+COPY stock_initial.csv /pb/stock_initial.csv
+COPY cost_mapping.csv /pb/cost_mapping.csv
 EXPOSE 8090

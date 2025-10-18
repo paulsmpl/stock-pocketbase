@@ -10,3 +10,7 @@ caddy_config/
 Thumbs.db
 .vscode/
 .idea/
+
+# CSV à la racine (copie utilisée uniquement dans pocketbase/)
+stock_boutique_harmonise_fusionne.xlsx - Sheet1.csv
+cout.csv

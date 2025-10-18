@@ -120,6 +120,8 @@ Tu obtiendras une URL type : `https://abc123.ngrok.io`
 
 ⚙️ Les collections `products`, `variants`, `inventory` et `movements` sont créées automatiquement par `init_collections.py`.
 
+🎯 **Import automatique du stock initial** : Le fichier `pocketbase/stock_initial.csv` est automatiquement importé au premier démarrage (133 produits, 757 variants). Voir [IMPORT.md](pocketbase/IMPORT.md) pour les détails.
+
 ---
 
 ## 🧩 Schéma des collections PocketBase
