@@ -28,7 +28,7 @@ def list_inventory(model=None, color=None, size=None, gender=None):
             pass
     
     chosen_model = model
-    if model and model not in model_choices:
+    if model and model_choices and model not in model_choices:
         exact_match = next((m for m in model_choices if m.lower() == model.lower()), None)
         if exact_match:
             chosen_model = exact_match
@@ -38,7 +38,7 @@ def list_inventory(model=None, color=None, size=None, gender=None):
                 chosen_model = m
     
     chosen_color = color
-    if color and color not in color_choices:
+    if color and color_choices and color not in color_choices:
         exact_match = next((c for c in color_choices if c.lower() == color.lower()), None)
         if exact_match:
             chosen_color = exact_match
