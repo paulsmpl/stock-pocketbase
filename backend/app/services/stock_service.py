@@ -1,19 +1,19 @@
 from typing import Optional
-import requests
 from app.services.fuzzy_matcher import best_match
-
-POCKETBASE_URL = "http://pocketbase:8090"
+from app.core.pocketbase_auth import authenticated_request, POCKETBASE_URL
 
 def list_inventory(model=None, color=None, size=None, gender=None):
     """Liste l'inventaire avec filtres optionnels et fuzzy matching"""
     
     # 1. Récupérer tous les records d'inventaire avec expand
-    response = requests.get(
+    response = authenticated_request(
+        "GET",
         f"{POCKETBASE_URL}/api/collections/inventory/records",
         params={"expand": "variant,variant.product", "perPage": 500}
     )
-    response.raise_for_status()
     data = response.json()
+    
+    # ...existing code... (reste identique)
     
     # 2. Collecter les choix disponibles pour fuzzy matching
     model_choices = []
@@ -36,12 +36,10 @@ def list_inventory(model=None, color=None, size=None, gender=None):
     # 3. Fuzzy matching pour le modèle
     chosen_model = model
     if model and model_choices and model not in model_choices:
-        # Essai exact (case-insensitive)
         exact_match = next((m for m in model_choices if m.lower() == model.lower()), None)
         if exact_match:
             chosen_model = exact_match
         else:
-            # Fuzzy matching
             m, score = best_match(model, model_choices)
             if m:
                 chosen_model = m
@@ -118,11 +116,11 @@ def list_inventory(model=None, color=None, size=None, gender=None):
 
 def _get_product_by_sku(sku):
     """Récupère un produit par SKU"""
-    response = requests.get(
+    response = authenticated_request(
+        "GET",
         f"{POCKETBASE_URL}/api/collections/products/records",
         params={"filter": f"sku='{sku}'", "perPage": 1}
     )
-    response.raise_for_status()
     data = response.json()
     items = data.get("items", [])
     return items[0] if items else None
@@ -130,11 +128,11 @@ def _get_product_by_sku(sku):
 
 def _get_variant(product_id, size):
     """Récupère un variant par product_id et size"""
-    response = requests.get(
+    response = authenticated_request(
+        "GET",
         f"{POCKETBASE_URL}/api/collections/variants/records",
         params={"filter": f"(product='{product_id}' && size='{size}')", "perPage": 1}
     )
-    response.raise_for_status()
     data = response.json()
     items = data.get("items", [])
     return items[0] if items else None
@@ -142,21 +140,21 @@ def _get_variant(product_id, size):
 
 def _create_variant(product_id, size):
     """Crée un nouveau variant"""
-    response = requests.post(
+    response = authenticated_request(
+        "POST",
         f"{POCKETBASE_URL}/api/collections/variants/records",
         json={"product": product_id, "size": size}
     )
-    response.raise_for_status()
     return response.json()
 
 
 def _get_or_create_inventory(variant_id):
     """Récupère ou crée un record d'inventaire"""
-    response = requests.get(
+    response = authenticated_request(
+        "GET",
         f"{POCKETBASE_URL}/api/collections/inventory/records",
         params={"filter": f"variant='{variant_id}'", "perPage": 1}
     )
-    response.raise_for_status()
     data = response.json()
     items = data.get("items", [])
     
@@ -164,27 +162,28 @@ def _get_or_create_inventory(variant_id):
         return items[0]
     
     # Créer si n'existe pas
-    response = requests.post(
+    response = authenticated_request(
+        "POST",
         f"{POCKETBASE_URL}/api/collections/inventory/records",
         json={"variant": variant_id, "quantity": 0, "reserved": 0}
     )
-    response.raise_for_status()
     return response.json()
 
 
 def _update_inventory(inventory_id, quantity):
     """Met à jour la quantité d'inventaire"""
-    response = requests.patch(
+    response = authenticated_request(
+        "PATCH",
         f"{POCKETBASE_URL}/api/collections/inventory/records/{inventory_id}",
         json={"quantity": quantity}
     )
-    response.raise_for_status()
     return response.json()
 
 
 def _create_movement(variant_id, movement_type, quantity, reason):
     """Crée un mouvement de stock"""
-    response = requests.post(
+    response = authenticated_request(
+        "POST",
         f"{POCKETBASE_URL}/api/collections/movements/records",
         json={
             "variant": variant_id,
@@ -193,7 +192,6 @@ def _create_movement(variant_id, movement_type, quantity, reason):
             "reason": reason
         }
     )
-    response.raise_for_status()
     return response.json()
 
 
@@ -202,25 +200,20 @@ def add_stock(sku, size, quantity):
     if quantity <= 0:
         raise ValueError("quantity must be > 0")
     
-    # 1. Trouver le produit
     product = _get_product_by_sku(sku)
     if not product:
         raise ValueError("Product not found")
     
-    # 2. Trouver ou créer le variant
     variant = _get_variant(product["id"], size)
     if not variant:
         variant = _create_variant(product["id"], size)
     
-    # 3. Trouver ou créer l'inventaire
     inv = _get_or_create_inventory(variant["id"])
     
-    # 4. Mettre à jour la quantité
     current = inv.get("quantity", 0)
     new_qty = current + quantity
     _update_inventory(inv["id"], new_qty)
     
-    # 5. Créer le mouvement
     _create_movement(variant["id"], "ADD_STOCK", quantity, "API add_stock")
     
     return {
@@ -236,29 +229,23 @@ def sell_stock(sku, size, quantity):
     if quantity <= 0:
         raise ValueError("quantity must be > 0")
     
-    # 1. Trouver le produit
     product = _get_product_by_sku(sku)
     if not product:
         raise ValueError("Product not found")
     
-    # 2. Trouver le variant
     variant = _get_variant(product["id"], size)
     if not variant:
         raise ValueError("Variant not found")
     
-    # 3. Trouver l'inventaire
     inv = _get_or_create_inventory(variant["id"])
     
-    # 4. Vérifier le stock disponible
     current = inv.get("quantity", 0)
     if current < quantity:
         raise ValueError(f"Insufficient stock. Available: {current}, requested: {quantity}")
     
-    # 5. Mettre à jour la quantité
     new_qty = current - quantity
     _update_inventory(inv["id"], new_qty)
     
-    # 6. Créer le mouvement
     _create_movement(variant["id"], "SALE", quantity, "API sale")
     
     return {

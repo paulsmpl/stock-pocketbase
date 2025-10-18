@@ -41,6 +41,9 @@ services:
       - ./backend/app:/app/app
     networks:
       - stock-network
+    environment:
+      POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL:-admin@stock.local}
+      POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD:-Admin123!}
 
   pocketbase:
     build: ./pocketbase

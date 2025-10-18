@@ -1,18 +1,16 @@
 from fastapi import APIRouter
-import requests
+from app.core.pocketbase_auth import authenticated_request, POCKETBASE_URL
 
 router = APIRouter(prefix="/models", tags=["Models"])
-
-POCKETBASE_URL = "http://pocketbase:8090"
 
 @router.get("")
 def list_models():
     """Liste tous les modèles disponibles avec leurs variantes"""
-    response = requests.get(
+    response = authenticated_request(
+        "GET",
         f"{POCKETBASE_URL}/api/collections/products/records",
         params={"perPage": 500}
     )
-    response.raise_for_status()
     data = response.json()
     
     models = {}
@@ -32,7 +30,6 @@ def list_models():
             if gender:
                 models[name]["genders"].add(gender)
     
-    # Convertir les sets en listes
     result = []
     for model in models.values():
         result.append({
