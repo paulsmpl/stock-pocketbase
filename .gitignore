@@ -1,4 +1,12 @@
 __pycache__/
 *.pyc
 .env
+backend/.env
 pocketbase/pb_data/
+caddy_data/
+caddy_config/
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

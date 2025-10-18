@@ -1,10 +1,19 @@
 # 🧱 Stock Assistant (FastAPI + PocketBase)
 
-**Stock Assistant** es### 2. Créer le fichier d'environnement
+**Stock Assistant** es### 2. Créer les fichiers d'environnement
 
 ```bash
+# Backend config
 cp backend/.env.example backend/.env
+
+# Ngrok config (à la racine)
+cp .env.example .env
 ```
+
+**Important** : Ajoute ton authtoken ngrok dans `.env` :
+
+1. Récupère ton authtoken sur [ngrok dashboard](https://dashboard.ngrok.com/get-started/your-authtoken)
+2. Édite `.env` et remplace `your_ngrok_authtoken_here` par ton token
 
 > ⚠️ **Important** : Le mot de passe admin PocketBase (`POCKETBASE_PASSWORD`) doit contenir **entre 10 et 72 caractères**.
 
@@ -36,7 +45,7 @@ ChatGPT ⇄ FastAPI (backend intelligent)
 ## 🗂 Structure du projet
 
 ```
-stock-assistant/
+stock-pocketbase/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py              # Entrée principale FastAPI
@@ -58,7 +67,8 @@ stock-assistant/
 │   └── movements.json
 │
 ├── openapi/openapi.yaml         # Spécification pour le connecteur ChatGPT
-├── docker-compose.yml           # Lancement PocketBase + FastAPI
+├── Caddyfile                    # Configuration reverse proxy HTTPS
+├── docker-compose.yml           # Orchestration Caddy + PocketBase + FastAPI
 └── README.md
 ```
 
@@ -86,8 +96,27 @@ docker compose up --build
 ```
 
 ➡️ Accès :
-- **PocketBase Admin UI** → [http://localhost:8090/_/](http://localhost:8090/_/)  
-- **FastAPI Docs** → [http://localhost:8000/docs](http://localhost:8000/docs)
+
+**Après le démarrage, récupère ton URL ngrok publique :**
+
+```bash
+# Via l'interface web ngrok
+http://localhost:4040
+
+# Ou via API
+curl http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
+```
+
+Tu obtiendras une URL type : `https://abc123.ngrok.io`
+
+**Endpoints disponibles :**
+- **FastAPI Docs** → `https://YOUR-NGROK-URL/docs`
+- **PocketBase Admin** → `https://YOUR-NGROK-URL/_/`
+- **PocketBase API** → `https://YOUR-NGROK-URL/api/`
+
+> 🔒 **HTTPS automatique** : ngrok gère automatiquement les certificats SSL.
+
+> 🌐 **URL publique** : Accessible depuis n'importe où sur internet via ngrok.
 
 ⚙️ Les collections `products`, `variants`, `inventory` et `movements` sont créées automatiquement par `init_collections.py`.
 
@@ -154,9 +183,11 @@ Tu peux l’importer directement dans le builder ChatGPT pour créer un assistan
 |------------|----------|------|
 | FastAPI | 0.115.5 | Framework API |
 | PocketBase | 0.22.14 | Backend + UI |
+| Caddy | 2 | Reverse proxy interne |
+| Ngrok | latest | Tunnel HTTPS public |
 | Python | 3.11 | Langage principal |
 | RapidFuzz | 3.9.3 | Correction floue |
-| Docker Compose | 3.9 | Orchestration |
+| Docker Compose | — | Orchestration |
 
 ---
 

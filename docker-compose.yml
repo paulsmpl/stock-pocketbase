@@ -1,13 +1,46 @@
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    expose:
+      - "80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - pocketbase
+    networks:
+      - stock-network
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    command:
+      - "http"
+      - "caddy:80"
+      - "--log=stdout"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"  # Ngrok web UI
+    depends_on:
+      - caddy
+    networks:
+      - stock-network
+
   api:
     build: ./backend
     env_file: ./backend/.env
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     depends_on:
       - pocketbase
     volumes:
       - ./backend/app:/app/app
+    networks:
+      - stock-network
 
   pocketbase:
     build: ./pocketbase
@@ -15,8 +48,8 @@ services:
       POCKETBASE_URL: "http://localhost:8090"
       POCKETBASE_EMAIL: "admin@example.com"
       POCKETBASE_PASSWORD: "admin123456789"
-    ports:
-      - "8090:8090"
+    expose:
+      - "8090"
     volumes:
       - ./pocketbase/pb_data:/pb/pb_data
     command: >
@@ -27,3 +60,13 @@ services:
              done;
              python3 /pb/init_collections.py;
              wait $$PB_PID"
+    networks:
+      - stock-network
+
+networks:
+  stock-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
