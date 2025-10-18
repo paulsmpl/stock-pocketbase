@@ -33,10 +33,10 @@ def list_inventory(model: Optional[str] = None, color: Optional[str] = None, siz
     for rec in records:
         product = rec.expand.get("variant").expand.get("product") if rec.expand and rec.expand.get("variant") else None
         if product:
-            if product.get("name"):
-                model_choices.add(product["name"])
-            if product.get("color"):
-                color_choices.add(product["color"])
+            if getattr(product, "name", None):
+                model_choices.add(getattr(product, "name"))
+            if getattr(product, "color", None):
+                color_choices.add(getattr(product, "color"))
     chosen_model = model
     if model and not any(m for m in model_choices if m.lower() == model.lower()):
         m, score = best_match(model, list(model_choices))
@@ -53,30 +53,31 @@ def list_inventory(model: Optional[str] = None, color: Optional[str] = None, siz
         product = variant.expand.get("product") if variant and variant.expand else None
 
         # Apply filters
-        if size and variant and variant.get("size") != size:
+        if size and variant and getattr(variant, "size", None) != size:
             continue
-        if chosen_model and product and product.get("name") != chosen_model:
+        if chosen_model and product and getattr(product, "name", None) != chosen_model:
             continue
-        if chosen_color and product and product.get("color") and product.get("color").lower() != chosen_color.lower():
+        if chosen_color and product and getattr(product, "color", None) and getattr(product, "color", "").lower() != chosen_color.lower():
             continue
-        if gender and product and product.get("gender") and product.get("gender").lower() != gender.lower():
+        if gender and product and getattr(product, "gender", None) and getattr(product, "gender", "").lower() != gender.lower():
             continue
 
         image_url = None
-        if product and product.get("photo"):
+        photo = getattr(product, "photo", None) if product else None
+        if product and photo:
             # build PocketBase file URL
-            image_url = f"{pb.base_url}/api/files/products/{product['id']}/{product['photo']}"
+            image_url = f"{pb.base_url}/api/files/products/{product.id}/{photo}"
 
         item = {
-            "sku": product.get("sku") if product else None,
-            "model": product.get("name") if product else None,
-            "color": product.get("color") if product else None,
-            "gender": product.get("gender") if product else None,
-            "cost": product.get("cost") if product else None,
-            "price": product.get("price") if product else None,
-            "size": variant.get("size") if variant else None,
-            "quantity": rec.get("quantity"),
-            "reserved": rec.get("reserved", 0),
+            "sku": getattr(product, "sku", None) if product else None,
+            "model": getattr(product, "name", None) if product else None,
+            "color": getattr(product, "color", None) if product else None,
+            "gender": getattr(product, "gender", None) if product else None,
+            "cost": getattr(product, "cost", None) if product else None,
+            "price": getattr(product, "price", None) if product else None,
+            "size": getattr(variant, "size", None) if variant else None,
+            "quantity": getattr(rec, "quantity", 0),
+            "reserved": getattr(rec, "reserved", 0),
             "image": image_url
         }
         result.append(item)
@@ -114,7 +115,7 @@ def add_stock(sku: str, size: str, quantity: int):
         # auto-create variant if size doesn't exist
         variant = pb.collection("variants").create({"product": product.id, "size": size})
     inv = _get_or_create_inventory(pb, variant.id)
-    new_qty = (inv.get("quantity") or 0) + quantity
+    new_qty = (getattr(inv, "quantity", None) or 0) + quantity
     pb.collection("inventory").update(inv.id, {"quantity": new_qty})
     pb.collection("movements").create({
         "variant": variant.id,
@@ -135,7 +136,7 @@ def sell_stock(sku: str, size: str, quantity: int):
     if not variant:
         raise ValueError("Variant not found")
     inv = _get_or_create_inventory(pb, variant.id)
-    current = inv.get("quantity") or 0
+    current = getattr(inv, "quantity", None) or 0
     if current < quantity:
         raise ValueError("Insufficient stock")
     new_qty = current - quantity

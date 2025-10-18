@@ -12,13 +12,13 @@ def list_models():
         for r in recs:
             d = {
                 "id": r.id,
-                "sku": r.get("sku"),
-                "name": r.get("name"),
-                "color": r.get("color"),
-                "gender": r.get("gender"),
-                "cost": r.get("cost"),
-                "price": r.get("price"),
-                "photo": r.get("photo")
+                "sku": getattr(r, "sku", None),
+                "name": getattr(r, "name", None),
+                "color": getattr(r, "color", None),
+                "gender": getattr(r, "gender", None),
+                "cost": getattr(r, "cost", None),
+                "price": getattr(r, "price", None),
+                "photo": getattr(r, "photo", None)
             }
             out.append(d)
         return {"items": out}
