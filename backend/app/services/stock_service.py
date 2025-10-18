@@ -48,16 +48,21 @@ def list_inventory(model=None, color=None, size=None, gender=None):
             if m:
                 chosen_model = m
     
-    # 4. Fuzzy matching pour la couleur
+    # 4. Fuzzy matching pour la couleur avec threshold adaptatif
     chosen_color = color
     if color and color_choices and color not in color_choices:
         exact_match = next((c for c in color_choices if c.lower() == color.lower()), None)
         if exact_match:
             chosen_color = exact_match
         else:
-            c, score = best_match(color, color_choices)
-            if c:
+            # Threshold plus strict pour mots courts (< 6 caractères)
+            threshold = 90 if len(color) < 6 else 80
+            c, score = best_match(color, color_choices, threshold=threshold)
+            if c and score >= threshold:
                 chosen_color = c
+            else:
+                # Si pas de match suffisant, ne pas filtrer par couleur
+                chosen_color = None
     
     # 5. Filtrer et construire les résultats
     result = []
