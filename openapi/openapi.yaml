@@ -1,86 +1,196 @@
 openapi: 3.1.0
 info:
   title: Stock Assistant API
+  description: API de gestion de stock de chaussures avec support du genre (homme/femme/mixte), des coûts et des prix
   version: 1.0.0
 servers:
-  - url: http://localhost:8000
+  - url: https://juliane-comedic-safely.ngrok-free.dev
+    description: Serveur de production via ngrok
 paths:
   /inventory:
     get:
-      summary: List inventory with optional filters
+      operationId: listInventory
+      summary: Lister l'inventaire avec filtres optionnels
+      description: Retourne la liste des articles en stock avec possibilité de filtrer par modèle, couleur, taille et genre
       parameters:
         - in: query
           name: model
-          schema: { type: string }
+          description: Nom du modèle de chaussure
+          schema: 
+            type: string
+          example: "Hermès"
         - in: query
           name: color
-          schema: { type: string }
+          description: Couleur du produit
+          schema: 
+            type: string
+          example: "Multicolore"
         - in: query
           name: size
-          schema: { type: string }
+          description: Pointure
+          schema: 
+            type: string
+          example: "38"
+        - in: query
+          name: gender
+          description: Genre du produit
+          schema:
+            type: string
+            enum: [homme, femme, mixte]
+          example: "femme"
       responses:
         "200":
-          description: OK
+          description: Liste des articles en stock
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  filters_applied:
+                    type: object
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        sku:
+                          type: string
+                        model:
+                          type: string
+                        color:
+                          type: string
+                        gender:
+                          type: string
+                        size:
+                          type: string
+                        quantity:
+                          type: integer
+                        cost:
+                          type: number
+                        price:
+                          type: number
+                        reserved:
+                          type: integer
   /inventory/add_stock:
     post:
-      summary: Add stock for a sku+size
+      operationId: addStock
+      summary: Ajouter du stock
+      description: Ajoute une quantité de stock pour un modèle et une taille donnés
       parameters:
         - in: query
           name: sku
           required: true
-          schema: { type: string }
+          description: Code SKU du produit (ex 1-MUL)
+          schema: 
+            type: string
+          example: "1-MUL"
         - in: query
           name: size
           required: true
-          schema: { type: string }
+          description: Pointure
+          schema: 
+            type: string
+          example: "38"
         - in: query
           name: quantity
           required: true
-          schema: { type: integer }
+          description: Quantité à ajouter
+          schema: 
+            type: integer
+          example: 5
       responses:
         "200":
-          description: OK
+          description: Stock ajouté avec succès
   /inventory/sale:
     post:
-      summary: Register a sale (decrement stock)
+      operationId: registerSale
+      summary: Enregistrer une vente
+      description: Décrémente le stock suite à une vente
       parameters:
         - in: query
           name: sku
           required: true
-          schema: { type: string }
+          description: Code SKU du produit
+          schema: 
+            type: string
+          example: "1-MUL"
         - in: query
           name: size
           required: true
-          schema: { type: string }
+          description: Pointure
+          schema: 
+            type: string
+          example: "38"
         - in: query
           name: quantity
           required: true
-          schema: { type: integer }
+          description: Quantité vendue
+          schema: 
+            type: integer
+          example: 2
       responses:
         "200":
-          description: OK
+          description: Vente enregistrée avec succès
   /models:
     get:
-      summary: List models (products)
+      operationId: listModels
+      summary: Lister tous les modèles
+      description: Retourne la liste complète des modèles de chaussures avec leurs informations (SKU, nom, couleur, genre, coût, prix)
       responses:
         "200":
-          description: OK
+          description: Liste des modèles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        sku:
+                          type: string
+                        name:
+                          type: string
+                        color:
+                          type: string
+                        gender:
+                          type: string
+                        cost:
+                          type: number
+                        price:
+                          type: number
   /movements:
     get:
-      summary: List stock movements with optional filters
+      operationId: listMovements
+      summary: Lister les mouvements de stock
+      description: Retourne l'historique des mouvements (ajouts, ventes, retours, etc.)
       parameters:
         - in: query
           name: sku
-          schema: { type: string }
+          description: Filtrer par SKU
+          schema: 
+            type: string
         - in: query
           name: size
-          schema: { type: string }
+          description: Filtrer par pointure
+          schema: 
+            type: string
         - in: query
           name: type
-          schema: { type: string, enum: [ADD_STOCK, SALE, RETURN, RESERVE, RELEASE] }
+          description: Type de mouvement
+          schema: 
+            type: string
+            enum: [ADD_STOCK, SALE, RETURN, RESERVE, RELEASE]
         - in: query
           name: limit
-          schema: { type: integer, default: 50 }
+          description: Nombre maximum de résultats
+          schema: 
+            type: integer
+            default: 50
       responses:
         "200":
-          description: OK
+          description: Liste des mouvements
