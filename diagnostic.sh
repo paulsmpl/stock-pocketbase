@@ -46,14 +46,14 @@ echo "----------------" | tee -a "$OUTPUT_FILE"
 docker compose logs api --tail 50 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
-# 5. Tests API avec monitoring des logs en temps réel
-echo "🧪 TESTS API AVEC LOGS" | tee -a "$OUTPUT_FILE"
-echo "----------------------" | tee -a "$OUTPUT_FILE"
+# 5. Tests API via réseau Docker interne
+echo "🧪 TESTS API (réseau Docker interne)" | tee -a "$OUTPUT_FILE"
+echo "-------------------------------------" | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
 # Test 1: Health check
-echo "▶ Test 1: Health check" | tee -a "$OUTPUT_FILE"
-curl -s http://localhost:8000/health 2>&1 | tee -a "$OUTPUT_FILE"
+echo "▶ Test 1: GET / (health check)" | tee -a "$OUTPUT_FILE"
+docker compose exec -T caddy wget -qO- http://api:8000/ 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 sleep 1
 docker compose logs api --tail 10 2>&1 | tee -a "$OUTPUT_FILE"
@@ -61,10 +61,7 @@ echo "" | tee -a "$OUTPUT_FILE"
 
 # Test 2: GET /models
 echo "▶ Test 2: GET /models" | tee -a "$OUTPUT_FILE"
-MODELS_RESPONSE=$(curl -s http://localhost:8000/models 2>&1)
-echo "Status code: $?" | tee -a "$OUTPUT_FILE"
-echo "Response (premiers 500 chars):" | tee -a "$OUTPUT_FILE"
-echo "$MODELS_RESPONSE" | head -c 500 | tee -a "$OUTPUT_FILE"
+docker compose exec -T caddy wget -qO- http://api:8000/models 2>&1 | head -c 1000 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 sleep 1
 docker compose logs api --tail 10 2>&1 | tee -a "$OUTPUT_FILE"
@@ -72,53 +69,56 @@ echo "" | tee -a "$OUTPUT_FILE"
 
 # Test 3: GET /inventory (sans filtre)
 echo "▶ Test 3: GET /inventory (sans filtre)" | tee -a "$OUTPUT_FILE"
-INVENTORY_FULL=$(curl -s http://localhost:8000/inventory 2>&1)
-echo "Status code: $?" | tee -a "$OUTPUT_FILE"
-echo "Response structure:" | tee -a "$OUTPUT_FILE"
-echo "$INVENTORY_FULL" | jq -r 'if type == "object" then {filters_applied, items_count: (.items | length)} else . end' 2>&1 | tee -a "$OUTPUT_FILE"
+docker compose exec -T caddy wget -qO- http://api:8000/inventory 2>&1 | head -c 1000 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 sleep 1
 docker compose logs api --tail 10 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
-# Test 4: GET /inventory?model=sabot (minuscule - DEVRAIT FONCTIONNER)
-echo "▶ Test 4: GET /inventory?model=sabot (minuscule)" | tee -a "$OUTPUT_FILE"
-echo "Logs AVANT la requête:" | tee -a "$OUTPUT_FILE"
+# Test 4: GET /inventory?model=sabot (minuscule - fuzzy matching)
+echo "▶ Test 4: GET /inventory?model=sabot (minuscule - fuzzy matching)" | tee -a "$OUTPUT_FILE"
+echo "Logs AVANT:" | tee -a "$OUTPUT_FILE"
 docker compose logs api --tail 5 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
-echo "Envoi de la requête..." | tee -a "$OUTPUT_FILE"
-SABOT_MIN=$(curl -s "http://localhost:8000/inventory?model=sabot" 2>&1)
-echo "Status code: $?" | tee -a "$OUTPUT_FILE"
-echo "Response complète:" | tee -a "$OUTPUT_FILE"
-echo "$SABOT_MIN" | tee -a "$OUTPUT_FILE"
+docker compose exec -T caddy wget -qO- 'http://api:8000/inventory?model=sabot' 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 sleep 2
-echo "Logs APRÈS la requête:" | tee -a "$OUTPUT_FILE"
+echo "Logs APRÈS:" | tee -a "$OUTPUT_FILE"
 docker compose logs api --tail 20 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
-# Test 5: GET /inventory?model=Sabot (majuscule - BUG ICI)
-echo "▶ Test 5: GET /inventory?model=Sabot (majuscule - TEST DU BUG)" | tee -a "$OUTPUT_FILE"
-echo "Logs AVANT la requête:" | tee -a "$OUTPUT_FILE"
+# Test 5: GET /inventory?model=Sabot (majuscule - TEST DU BUG)
+echo "▶ Test 5: GET /inventory?model=Sabot (majuscule - BUG ATTENDU)" | tee -a "$OUTPUT_FILE"
+echo "Logs AVANT:" | tee -a "$OUTPUT_FILE"
 docker compose logs api --tail 5 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
-echo "Envoi de la requête..." | tee -a "$OUTPUT_FILE"
-SABOT_MAJ=$(curl -s "http://localhost:8000/inventory?model=Sabot" 2>&1)
-echo "Status code: $?" | tee -a "$OUTPUT_FILE"
-echo "Response complète:" | tee -a "$OUTPUT_FILE"
-echo "$SABOT_MAJ" | tee -a "$OUTPUT_FILE"
+echo "📡 Envoi de la requête avec model=Sabot..." | tee -a "$OUTPUT_FILE"
+docker compose exec -T caddy wget -qO- 'http://api:8000/inventory?model=Sabot' 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 sleep 2
-echo "Logs APRÈS la requête (CAPTURE DU BUG):" | tee -a "$OUTPUT_FILE"
+echo "🔥 Logs APRÈS (CAPTURE DU BUG 'pop'):" | tee -a "$OUTPUT_FILE"
 docker compose logs api --tail 30 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
-# Test 6: Fuzzy matching "sabbot"
-echo "▶ Test 6: GET /inventory?model=sabbot (fuzzy matching)" | tee -a "$OUTPUT_FILE"
-SABBOT=$(curl -s "http://localhost:8000/inventory?model=sabbot" 2>&1)
-echo "Status code: $?" | tee -a "$OUTPUT_FILE"
-echo "Response:" | tee -a "$OUTPUT_FILE"
-echo "$SABBOT" | tee -a "$OUTPUT_FILE"
+# Test 6: Fuzzy matching "sabbot" (faute de frappe)
+echo "▶ Test 6: GET /inventory?model=sabbot (fuzzy matching typo)" | tee -a "$OUTPUT_FILE"
+docker compose exec -T caddy wget -qO- 'http://api:8000/inventory?model=sabbot' 2>&1 | tee -a "$OUTPUT_FILE"
+echo "" | tee -a "$OUTPUT_FILE"
+sleep 1
+docker compose logs api --tail 10 2>&1 | tee -a "$OUTPUT_FILE"
+echo "" | tee -a "$OUTPUT_FILE"
+
+# Test 7: Filtre par couleur
+echo "▶ Test 7: GET /inventory?color=Marron" | tee -a "$OUTPUT_FILE"
+docker compose exec -T caddy wget -qO- 'http://api:8000/inventory?color=Marron' 2>&1 | head -c 500 | tee -a "$OUTPUT_FILE"
+echo "" | tee -a "$OUTPUT_FILE"
+sleep 1
+docker compose logs api --tail 10 2>&1 | tee -a "$OUTPUT_FILE"
+echo "" | tee -a "$OUTPUT_FILE"
+
+# Test 8: Filtres combinés
+echo "▶ Test 8: GET /inventory?model=Sabot&color=Noir (filtres combinés)" | tee -a "$OUTPUT_FILE"
+docker compose exec -T caddy wget -qO- 'http://api:8000/inventory?model=Sabot&color=Noir' 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 sleep 1
 docker compose logs api --tail 10 2>&1 | tee -a "$OUTPUT_FILE"
@@ -130,29 +130,39 @@ echo "-------------------------------" | tee -a "$OUTPUT_FILE"
 docker compose logs api 2>&1 | grep -i -A 10 -B 5 "pop expected" | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
-# 7. Traceback complet
-echo "🐛 TRACEBACKS COMPLETS" | tee -a "$OUTPUT_FILE"
+# 7. Recherche de tous les Tracebacks
+echo "🐛 TOUS LES TRACEBACKS" | tee -a "$OUTPUT_FILE"
 echo "----------------------" | tee -a "$OUTPUT_FILE"
 docker compose logs api 2>&1 | grep -i -A 20 "Traceback" | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
 # 8. Analyse finale
-echo "📊 ANALYSE" | tee -a "$OUTPUT_FILE"
-echo "----------" | tee -a "$OUTPUT_FILE"
+echo "📊 ANALYSE FINALE" | tee -a "$OUTPUT_FILE"
+echo "-----------------" | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
-echo "Vérification syntaxe Python:" | tee -a "$OUTPUT_FILE"
+echo "Vérification syntaxe Python (hôte):" | tee -a "$OUTPUT_FILE"
 python3 -m py_compile backend/app/services/stock_service.py 2>&1 | tee -a "$OUTPUT_FILE"
-[ $? -eq 0 ] && echo "✅ Syntaxe OK" | tee -a "$OUTPUT_FILE" || echo "❌ Erreur syntaxe" | tee -a "$OUTPUT_FILE"
+[ $? -eq 0 ] && echo "✅ Syntaxe OK sur l'hôte" | tee -a "$OUTPUT_FILE" || echo "❌ Erreur syntaxe sur l'hôte" | tee -a "$OUTPUT_FILE"
+echo "" | tee -a "$OUTPUT_FILE"
+
+echo "Vérification syntaxe Python (conteneur):" | tee -a "$OUTPUT_FILE"
+docker compose exec -T api python3 -m py_compile /app/app/services/stock_service.py 2>&1 | tee -a "$OUTPUT_FILE"
+[ $? -eq 0 ] && echo "✅ Syntaxe OK dans le conteneur" | tee -a "$OUTPUT_FILE" || echo "❌ Erreur syntaxe dans le conteneur" | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
 echo "Taille PocketBase:" | tee -a "$OUTPUT_FILE"
 du -sh pocketbase/pb_data 2>&1 | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
+echo "Nombre de produits dans PocketBase:" | tee -a "$OUTPUT_FILE"
+docker compose exec -T pocketbase /pb/pocketbase admin list-records products --count 2>&1 | tee -a "$OUTPUT_FILE" || echo "Commande non disponible" | tee -a "$OUTPUT_FILE"
+echo "" | tee -a "$OUTPUT_FILE"
+
 echo "🎉 Diagnostic terminé ! Fichier: $OUTPUT_FILE" | tee -a "$OUTPUT_FILE"
 echo "" | tee -a "$OUTPUT_FILE"
 
-# Résumé des erreurs
-echo "🚨 RÉSUMÉ DES ERREURS:"
-grep -E "(pop expected|SyntaxError|Exception|Traceback)" "$OUTPUT_FILE" | tail -30
+# Résumé des erreurs critiques
+echo "🚨 RÉSUMÉ DES ERREURS CRITIQUES:" | tee -a "$OUTPUT_FILE"
+echo "---------------------------------" | tee -a "$OUTPUT_FILE"
+grep -E "(pop expected|SyntaxError|Exception|Traceback|ERROR|CRITICAL)" "$OUTPUT_FILE" | tail -50 | tee -a "$OUTPUT_FILE"
