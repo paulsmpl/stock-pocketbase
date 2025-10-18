@@ -34,23 +34,66 @@ def main():
         token = auth.json()["token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        collections = ["products.json", "variants.json", "inventory.json", "movements.json"]
-        for file in collections:
-            path = os.path.join("/pb", file)
-            with open(path, "r") as f:
-                collection_data = json.load(f)
-                name = collection_data["name"]
-
-            resp = requests.get(f"{POCKETBASE_URL}/api/collections/{name}", headers=headers)
-            if resp.status_code == 404:
-                print(f"📦 Creating collection: {name}")
-                create = requests.post(f"{POCKETBASE_URL}/api/collections", headers=headers, json=collection_data)
-                if create.status_code == 200:
-                    print(f"✅ Collection '{name}' created.")
-                else:
-                    print(f"❌ Failed to create {name}: {create.text}")
+        # Créer products en premier et récupérer son ID
+        products_data = json.load(open("/pb/products.json"))
+        resp = requests.get(f"{POCKETBASE_URL}/api/collections/products", headers=headers)
+        if resp.status_code == 404:
+            print("📦 Creating collection: products")
+            create = requests.post(f"{POCKETBASE_URL}/api/collections", headers=headers, json=products_data)
+            if create.status_code == 200:
+                products_id = create.json()["id"]
+                print(f"✅ Collection 'products' created (ID: {products_id})")
             else:
-                print(f"⚠️ Collection '{name}' already exists.")
+                print(f"❌ Failed to create products: {create.text}")
+                return
+        else:
+            products_id = resp.json()["id"]
+            print(f"⚠️ Collection 'products' already exists (ID: {products_id})")
+
+        # Créer variants avec l'ID de products
+        variants_data = json.load(open("/pb/variants.json"))
+        variants_data["schema"][0]["options"]["collectionId"] = products_id
+        resp = requests.get(f"{POCKETBASE_URL}/api/collections/variants", headers=headers)
+        if resp.status_code == 404:
+            print("📦 Creating collection: variants")
+            create = requests.post(f"{POCKETBASE_URL}/api/collections", headers=headers, json=variants_data)
+            if create.status_code == 200:
+                variants_id = create.json()["id"]
+                print(f"✅ Collection 'variants' created (ID: {variants_id})")
+            else:
+                print(f"❌ Failed to create variants: {create.text}")
+                return
+        else:
+            variants_id = resp.json()["id"]
+            print(f"⚠️ Collection 'variants' already exists (ID: {variants_id})")
+
+        # Créer inventory avec l'ID de variants
+        inventory_data = json.load(open("/pb/inventory.json"))
+        inventory_data["schema"][0]["options"]["collectionId"] = variants_id
+        resp = requests.get(f"{POCKETBASE_URL}/api/collections/inventory", headers=headers)
+        if resp.status_code == 404:
+            print("📦 Creating collection: inventory")
+            create = requests.post(f"{POCKETBASE_URL}/api/collections", headers=headers, json=inventory_data)
+            if create.status_code == 200:
+                print(f"✅ Collection 'inventory' created.")
+            else:
+                print(f"❌ Failed to create inventory: {create.text}")
+        else:
+            print(f"⚠️ Collection 'inventory' already exists.")
+
+        # Créer movements avec l'ID de variants
+        movements_data = json.load(open("/pb/movements.json"))
+        movements_data["schema"][0]["options"]["collectionId"] = variants_id
+        resp = requests.get(f"{POCKETBASE_URL}/api/collections/movements", headers=headers)
+        if resp.status_code == 404:
+            print("📦 Creating collection: movements")
+            create = requests.post(f"{POCKETBASE_URL}/api/collections", headers=headers, json=movements_data)
+            if create.status_code == 200:
+                print(f"✅ Collection 'movements' created.")
+            else:
+                print(f"❌ Failed to create movements: {create.text}")
+        else:
+            print(f"⚠️ Collection 'movements' already exists.")
     except Exception as e:
         print("Init error:", e)
 
