@@ -42,9 +42,9 @@ services:
     networks:
       - stock-network
     environment:
-      POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL:-admin@stock.local}
-      POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD:-Admin123!}
-
+      POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_EMAIL:-admin@stock.local}
+      POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_PASSWORD:-VotreSuperMotDePasseSecurisé123!}
+  
   pocketbase:
     build: ./pocketbase
     environment:
@@ -65,7 +65,9 @@ services:
              wait $$PB_PID"
     networks:
       - stock-network
-
+    environment:
+      POCKETBASE_EMAIL: admin@stock.local
+      POCKETBASE_PASSWORD: VotreSuperMotDePasseSecurisé123!
 networks:
   stock-network:
     driver: bridge
