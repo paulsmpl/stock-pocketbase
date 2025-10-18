@@ -1,0 +1,42 @@
+{
+    # Configuration globale
+    # Désactiver HTTPS automatique (géré par ngrok)
+    auto_https off
+    # Désactiver l'admin API Caddy pour la sécurité
+    admin off
+}
+
+# Écouter sur HTTP (ngrok va gérer HTTPS)
+:80 {
+    # Routes PocketBase (Admin UI et API)
+    handle /api/* {
+        reverse_proxy pocketbase:8090
+    }
+    
+    handle /_/* {
+        reverse_proxy pocketbase:8090
+    }
+    
+    # Route par défaut vers FastAPI
+    handle /* {
+        reverse_proxy api:8000
+    }
+
+    # Headers de sécurité
+    header {
+        # Empêcher le clickjacking
+        X-Frame-Options "DENY"
+        # Empêcher le MIME sniffing
+        X-Content-Type-Options "nosniff"
+        # Activer la protection XSS
+        X-XSS-Protection "1; mode=block"
+        # Référrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Logs
+    log {
+        output stdout
+        format json
+    }
+}
