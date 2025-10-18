@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 POCKETBASE_URL = "http://pocketbase:8090"
 ADMIN_EMAIL = os.getenv("POCKETBASE_ADMIN_EMAIL", "admin@stock.local")
-ADMIN_PASSWORD = os.getenv("POCKETBASE_ADMIN_PASSWORD", "Admin123!")
+ADMIN_PASSWORD = os.getenv("POCKETBASE_ADMIN_PASSWORD", "VotreSuperMotDePasseSecurisé123!")
 
 # Cache du token avec expiration
 _token_cache = {"token": None, "expires_at": None}
