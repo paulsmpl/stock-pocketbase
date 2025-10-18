@@ -2,8 +2,8 @@ import os, json, requests, csv
 from collections import defaultdict
 
 POCKETBASE_URL = os.getenv("POCKETBASE_URL", "http://localhost:8090")
-ADMIN_EMAIL = os.getenv("POCKETBASE_EMAIL", "admin@example.com")
-ADMIN_PASSWORD = os.getenv("POCKETBASE_PASSWORD", "admin123")
+ADMIN_EMAIL = os.getenv("POCKETBASE_EMAIL", "admin@stock.local")
+ADMIN_PASSWORD = os.getenv("POCKETBASE_PASSWORD", "VotreSuperMotDePasseSecurisé123!")
 CSV_PATH = "/pb/stock_initial.csv"
 COST_CSV_PATH = "/pb/cost_mapping.csv"
 
