@@ -21,7 +21,7 @@ def _expand_inventory() -> List[Dict[str, Any]]:
         out.append(d if isinstance(d, dict) else r)
     return records  # raw records are fine for attribute access
 
-def list_inventory(model: Optional[str] = None, color: Optional[str] = None, size: Optional[str] = None):
+def list_inventory(model: Optional[str] = None, color: Optional[str] = None, size: Optional[str] = None, gender: Optional[str] = None):
     pb = get_pb()
     records = pb.collection("inventory").get_full_list(query_params={
         "expand": "variant,variant.product"
@@ -59,6 +59,8 @@ def list_inventory(model: Optional[str] = None, color: Optional[str] = None, siz
             continue
         if chosen_color and product and product.get("color") and product.get("color").lower() != chosen_color.lower():
             continue
+        if gender and product and product.get("gender") and product.get("gender").lower() != gender.lower():
+            continue
 
         image_url = None
         if product and product.get("photo"):
@@ -69,13 +71,14 @@ def list_inventory(model: Optional[str] = None, color: Optional[str] = None, siz
             "sku": product.get("sku") if product else None,
             "model": product.get("name") if product else None,
             "color": product.get("color") if product else None,
+            "gender": product.get("gender") if product else None,
             "size": variant.get("size") if variant else None,
             "quantity": rec.get("quantity"),
             "reserved": rec.get("reserved", 0),
             "image": image_url
         }
         result.append(item)
-    return {"filters_applied": {"model": chosen_model, "color": chosen_color, "size": size}, "items": result}
+    return {"filters_applied": {"model": chosen_model, "color": chosen_color, "size": size, "gender": gender}, "items": result}
 
 def _get_product_by_sku(pb, sku: str):
     recs = pb.collection("products").get_list(1, 1, query_params={"filter": f"sku='{sku}'"})

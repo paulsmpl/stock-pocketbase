@@ -24,6 +24,19 @@
       "required": false
     },
     {
+      "name": "gender",
+      "type": "select",
+      "required": false,
+      "options": {
+        "maxSelect": 1,
+        "values": [
+          "homme",
+          "femme",
+          "mixte"
+        ]
+      }
+    },
+    {
       "name": "photo",
       "type": "file",
       "required": false,

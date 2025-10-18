@@ -10,7 +10,7 @@ def list_models():
         recs = pb.collection("products").get_full_list()
         out = []
         for r in recs:
-            d = {"id": r.id, "sku": r.get("sku"), "name": r.get("name"), "color": r.get("color"), "photo": r.get("photo")}
+            d = {"id": r.id, "sku": r.get("sku"), "name": r.get("name"), "color": r.get("color"), "gender": r.get("gender"), "photo": r.get("photo")}
             out.append(d)
         return {"items": out}
     except Exception as e:

@@ -8,9 +8,10 @@ def inventory_route(
     model: str | None = Query(None, description="Nom du modèle (optionnel)"),
     color: str | None = Query(None, description="Couleur (optionnel)"),
     size: str | None = Query(None, description="Pointure/taille (optionnel)"),
+    gender: str | None = Query(None, description="Sexe (homme/femme/mixte, optionnel)"),
 ):
     try:
-        return list_inventory(model=model, color=color, size=size)
+        return list_inventory(model=model, color=color, size=size, gender=gender)
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
