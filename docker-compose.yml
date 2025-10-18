@@ -45,27 +45,33 @@ services:
       POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_EMAIL:-admin@stock.local}
       POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_PASSWORD:-VotreSuperMotDePasseSecurisé123!}
   
+  services:
   pocketbase:
     build: ./pocketbase
-    environment:
-      POCKETBASE_URL: "http://localhost:8090"
-      POCKETBASE_EMAIL: admin@stock.local
-      POCKETBASE_PASSWORD: VotreSuperMotDePasseSecurisé123!
-    expose:
-      - "8090"
+    restart: unless-stopped
     volumes:
       - ./pocketbase/pb_data:/pb/pb_data
-    command: >
-      sh -c "./pocketbase serve --http 0.0.0.0:8090 &
-             PB_PID=$$!;
-             until curl -sf http://localhost:8090/api/health >/dev/null 2>&1; do
-               echo 'waiting pocketbase...'; sleep 1;
-             done;
-             python3 /pb/init_collections.py;
-             wait $$PB_PID"
+      - ./pocketbase/init_collections.py:/pb/init_collections.py
+      - ./data/stock_initial.csv:/pb/stock_initial.csv
+    environment:
+      POCKETBASE_EMAIL: admin@stock.local
+      POCKETBASE_PASSWORD: VotreSuperMotDePasseSecurisé123!
+      # Variables pour auto-création admin
+      POCKETBASE_ADMIN_EMAIL: admin@stock.local
+      POCKETBASE_ADMIN_PASSWORD: VotreSuperMotDePasseSecurisé123!
+    expose:
+      - "8090"
     networks:
       - stock-network
-
+    # Créer l'admin au premier run
+    command: >
+      sh -c "
+        /pocketbase serve --http=0.0.0.0:8090 &
+        sleep 5 &&
+        /pocketbase admin create admin@stock.local VotreSuperMotDePasseSecurisé123! 2>/dev/null || true &&
+        python3 /pb/init_collections.py || true &&
+        wait
+      "
 networks:
   stock-network:
     driver: bridge
