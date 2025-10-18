@@ -45,7 +45,7 @@ services:
       POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_EMAIL:-admin@stock.local}
       POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_PASSWORD:-VotreSuperMotDePasseSecurisé123!}
   
-  services:
+
   pocketbase:
     build: ./pocketbase
     restart: unless-stopped
