@@ -46,30 +46,27 @@ services:
       POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_PASSWORD:-VotreSuperMotDePasseSecurisé123!}
   
 
-  pocketbase:
+    pocketbase:
     build: ./pocketbase
     restart: unless-stopped
     volumes:
       - ./pocketbase/pb_data:/pb/pb_data
       - ./pocketbase/init_collections.py:/pb/init_collections.py
       - ./data/stock_initial.csv:/pb/stock_initial.csv
+      - ./data/cost_mapping.csv:/pb/cost_mapping.csv
     environment:
       POCKETBASE_EMAIL: admin@stock.local
       POCKETBASE_PASSWORD: VotreSuperMotDePasseSecurisé123!
-      # Variables pour auto-création admin
-      POCKETBASE_ADMIN_EMAIL: admin@stock.local
-      POCKETBASE_ADMIN_PASSWORD: VotreSuperMotDePasseSecurisé123!
     expose:
       - "8090"
     networks:
       - stock-network
-    # Créer l'admin au premier run
     command: >
       sh -c "
-        /pocketbase serve --http=0.0.0.0:8090 &
-        sleep 5 &&
-        /pocketbase admin create admin@stock.local VotreSuperMotDePasseSecurisé123! 2>/dev/null || true &&
-        python3 /pb/init_collections.py || true &&
+        /pb/pocketbase serve --http=0.0.0.0:8090 &
+        sleep 10 &&
+        /pb/pocketbase admin create admin@stock.local VotreSuperMotDePasseSecurisé123! 2>/dev/null || echo 'Admin existe déjà' &&
+        python3 /pb/init_collections.py || echo 'Init collections échoué' &&
         wait
       "
 networks:
