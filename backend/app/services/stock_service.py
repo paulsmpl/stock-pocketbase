@@ -31,7 +31,11 @@ def list_inventory(model: Optional[str] = None, color: Optional[str] = None, siz
     model_choices = set()
     color_choices = set()
     for rec in records:
-        product = rec.expand.get("variant").expand.get("product") if rec.expand and rec.expand.get("variant") else None
+        product = None
+        if hasattr(rec, "expand") and rec.expand:
+            variant = getattr(rec.expand, "variant", None)
+            if variant and hasattr(variant, "expand") and variant.expand:
+                product = getattr(variant.expand, "product", None)
         if product:
             if getattr(product, "name", None):
                 model_choices.add(getattr(product, "name"))
@@ -49,8 +53,8 @@ def list_inventory(model: Optional[str] = None, color: Optional[str] = None, siz
             chosen_color = c
 
     for rec in records:
-        variant = rec.expand.get("variant") if rec.expand else None
-        product = variant.expand.get("product") if variant and variant.expand else None
+        variant = getattr(rec.expand, "variant", None) if hasattr(rec, "expand") and rec.expand else None
+        product = getattr(variant.expand, "product", None) if variant and hasattr(variant, "expand") and variant.expand else None
 
         # Apply filters
         if size and variant and getattr(variant, "size", None) != size:
