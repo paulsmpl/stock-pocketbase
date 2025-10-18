@@ -21,7 +21,9 @@ services:
       - ./pocketbase/pb_data:/pb/pb_data
     command: >
       sh -c "./pocketbase serve --http 0.0.0.0:8090 &
-             until curl -sf http://localhost:8090/api/health >/dev/null; do
+             PB_PID=$$!;
+             until curl -sf http://localhost:8090/api/health >/dev/null 2>&1; do
                echo 'waiting pocketbase...'; sleep 1;
              done;
-             python3 /pb/init_collections.py"
+             python3 /pb/init_collections.py;
+             wait $$PB_PID"
