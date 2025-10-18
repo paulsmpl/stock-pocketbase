@@ -2,6 +2,12 @@ from typing import Optional
 from app.services.fuzzy_matcher import best_match
 from app.core.pocketbase_auth import authenticated_request, POCKETBASE_URL
 
+def _extract_single(data):
+    """Extrait un objet unique d'une liste ou retourne le dict directement"""
+    if isinstance(data, list):
+        return data[0] if data else {}
+    return data if isinstance(data, dict) else {}
+
 def list_inventory(model=None, color=None, size=None, gender=None):
     """Liste l'inventaire avec filtres optionnels et fuzzy matching"""
     
@@ -13,17 +19,15 @@ def list_inventory(model=None, color=None, size=None, gender=None):
     )
     data = response.json()
     
-    # ...existing code... (reste identique)
-    
     # 2. Collecter les choix disponibles pour fuzzy matching
     model_choices = []
     color_choices = []
     
     for item in data.get("items", []):
         expand = item.get("expand", {})
-        variant = expand.get("variant", {})
+        variant = _extract_single(expand.get("variant", {}))
         variant_expand = variant.get("expand", {})
-        product = variant_expand.get("product", {})
+        product = _extract_single(variant_expand.get("product", {}))
         
         p_name = product.get("name")
         p_color = product.get("color")
@@ -59,9 +63,9 @@ def list_inventory(model=None, color=None, size=None, gender=None):
     result = []
     for item in data.get("items", []):
         expand = item.get("expand", {})
-        variant = expand.get("variant", {})
+        variant = _extract_single(expand.get("variant", {}))
         variant_expand = variant.get("expand", {})
-        product = variant_expand.get("product", {})
+        product = _extract_single(variant_expand.get("product", {}))
         
         v_size = variant.get("size")
         p_name = product.get("name")
