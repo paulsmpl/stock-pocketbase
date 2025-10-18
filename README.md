@@ -1,6 +1,14 @@
 # 🧱 Stock Assistant (FastAPI + PocketBase)
 
-**Stock Assistant** est une application légère de gestion de stock connectée à **ChatGPT**.  
+**Stock Assistant** es### 2. Créer le fichier d'environnement
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+> ⚠️ **Important** : Le mot de passe admin PocketBase (`POCKETBASE_PASSWORD`) doit contenir **entre 10 et 72 caractères**.
+
+### 3. Lancer avec Dockerpplication légère de gestion de stock connectée à **ChatGPT**.  
 Elle combine **PocketBase** comme base de données et back-office, avec **FastAPI** comme API métier et interface pour un connecteur OpenAPI utilisable dans ChatGPT.
 
 ---
