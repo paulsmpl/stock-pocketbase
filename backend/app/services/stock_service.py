@@ -30,17 +30,27 @@ def list_inventory(model: Optional[str] = None, color: Optional[str] = None, siz
     # Prepare choices for fuzzy on model/color if needed
     model_choices = set()
     color_choices = set()
+    
     for rec in records:
-        product = None
-        if hasattr(rec, "expand") and rec.expand:
-            variant = getattr(rec.expand, "variant", None)
-            if variant and hasattr(variant, "expand") and variant.expand:
-                product = getattr(variant.expand, "product", None)
-        if product:
-            if getattr(product, "name", None):
-                model_choices.add(getattr(product, "name"))
-            if getattr(product, "color", None):
-                color_choices.add(getattr(product, "color"))
+        try:
+            # Access expand - could be dict or object
+            expand = rec.expand if hasattr(rec, "expand") else {}
+            variant = expand.get("variant") if isinstance(expand, dict) else getattr(expand, "variant", None)
+            
+            if variant:
+                v_expand = variant.expand if hasattr(variant, "expand") else {}
+                product = v_expand.get("product") if isinstance(v_expand, dict) else getattr(v_expand, "product", None)
+                
+                if product:
+                    pname = product.get("name") if isinstance(product, dict) else getattr(product, "name", None)
+                    pcolor = product.get("color") if isinstance(product, dict) else getattr(product, "color", None)
+                    if pname:
+                        model_choices.add(pname)
+                    if pcolor:
+                        color_choices.add(pcolor)
+        except Exception:
+            pass
+    
     chosen_model = model
     if model and not any(m for m in model_choices if m.lower() == model.lower()):
         m, score = best_match(model, list(model_choices))
@@ -53,38 +63,61 @@ def list_inventory(model: Optional[str] = None, color: Optional[str] = None, siz
             chosen_color = c
 
     for rec in records:
-        variant = getattr(rec.expand, "variant", None) if hasattr(rec, "expand") and rec.expand else None
-        product = getattr(variant.expand, "product", None) if variant and hasattr(variant, "expand") and variant.expand else None
+        try:
+            # Access expand - could be dict or object
+            expand = rec.expand if hasattr(rec, "expand") else {}
+            variant = expand.get("variant") if isinstance(expand, dict) else getattr(expand, "variant", None)
+            product = None
+            
+            if variant:
+                v_expand = variant.expand if hasattr(variant, "expand") else {}
+                product = v_expand.get("product") if isinstance(v_expand, dict) else getattr(v_expand, "product", None)
 
-        # Apply filters
-        if size and variant and getattr(variant, "size", None) != size:
-            continue
-        if chosen_model and product and getattr(product, "name", None) != chosen_model:
-            continue
-        if chosen_color and product and getattr(product, "color", None) and getattr(product, "color", "").lower() != chosen_color.lower():
-            continue
-        if gender and product and getattr(product, "gender", None) and getattr(product, "gender", "").lower() != gender.lower():
-            continue
+            # Get values safely
+            v_size = variant.get("size") if isinstance(variant, dict) else getattr(variant, "size", None) if variant else None
+            p_name = product.get("name") if isinstance(product, dict) else getattr(product, "name", None) if product else None
+            p_color = product.get("color") if isinstance(product, dict) else getattr(product, "color", None) if product else None
+            p_gender = product.get("gender") if isinstance(product, dict) else getattr(product, "gender", None) if product else None
+            p_cost = product.get("cost") if isinstance(product, dict) else getattr(product, "cost", None) if product else None
+            p_price = product.get("price") if isinstance(product, dict) else getattr(product, "price", None) if product else None
+            p_sku = product.get("sku") if isinstance(product, dict) else getattr(product, "sku", None) if product else None
+            p_photo = product.get("photo") if isinstance(product, dict) else getattr(product, "photo", None) if product else None
+            p_id = product.get("id") if isinstance(product, dict) else getattr(product, "id", None) if product else None
+            
+            rec_qty = rec.get("quantity") if isinstance(rec, dict) else getattr(rec, "quantity", 0)
+            rec_reserved = rec.get("reserved") if isinstance(rec, dict) else getattr(rec, "reserved", 0)
 
-        image_url = None
-        photo = getattr(product, "photo", None) if product else None
-        if product and photo:
-            # build PocketBase file URL
-            image_url = f"{pb.base_url}/api/files/products/{product.id}/{photo}"
+            # Apply filters
+            if size and v_size != size:
+                continue
+            if chosen_model and p_name != chosen_model:
+                continue
+            if chosen_color and p_color and p_color.lower() != chosen_color.lower():
+                continue
+            if gender and p_gender and p_gender.lower() != gender.lower():
+                continue
 
-        item = {
-            "sku": getattr(product, "sku", None) if product else None,
-            "model": getattr(product, "name", None) if product else None,
-            "color": getattr(product, "color", None) if product else None,
-            "gender": getattr(product, "gender", None) if product else None,
-            "cost": getattr(product, "cost", None) if product else None,
-            "price": getattr(product, "price", None) if product else None,
-            "size": getattr(variant, "size", None) if variant else None,
-            "quantity": getattr(rec, "quantity", 0),
-            "reserved": getattr(rec, "reserved", 0),
-            "image": image_url
-        }
-        result.append(item)
+            image_url = None
+            if product and p_photo:
+                # build PocketBase file URL
+                image_url = f"{pb.base_url}/api/files/products/{p_id}/{p_photo}"
+
+            item = {
+                "sku": p_sku,
+                "model": p_name,
+                "color": p_color,
+                "gender": p_gender,
+                "cost": p_cost,
+                "price": p_price,
+                "size": v_size,
+                "quantity": rec_qty,
+                "reserved": rec_reserved,
+                "image": image_url
+            }
+            result.append(item)
+        except Exception:
+            pass
+            
     return {"filters_applied": {"model": chosen_model, "color": chosen_color, "size": size, "gender": gender}, "items": result}
 
 def _get_product_by_sku(pb, sku: str):
