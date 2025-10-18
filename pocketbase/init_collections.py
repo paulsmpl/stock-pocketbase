@@ -6,9 +6,31 @@ ADMIN_PASSWORD = os.getenv("POCKETBASE_PASSWORD", "admin123")
 
 def main():
     try:
+        # Tenter l'authentification admin
         auth = requests.post(f"{POCKETBASE_URL}/api/admins/auth-with-password",
                              json={"identity": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
-        auth.raise_for_status()
+        
+        # Si l'admin n'existe pas (400), le créer
+        if auth.status_code == 400:
+            print("📝 Admin not found, creating initial admin...")
+            create_admin = requests.post(f"{POCKETBASE_URL}/api/admins",
+                                        json={
+                                            "email": ADMIN_EMAIL,
+                                            "password": ADMIN_PASSWORD,
+                                            "passwordConfirm": ADMIN_PASSWORD
+                                        })
+            if create_admin.status_code in [200, 201]:
+                print(f"✅ Admin created: {ADMIN_EMAIL}")
+                # Ré-authentifier après création
+                auth = requests.post(f"{POCKETBASE_URL}/api/admins/auth-with-password",
+                                   json={"identity": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
+                auth.raise_for_status()
+            else:
+                print(f"❌ Failed to create admin: {create_admin.text}")
+                return
+        else:
+            auth.raise_for_status()
+        
         token = auth.json()["token"]
         headers = {"Authorization": f"Bearer {token}"}
 

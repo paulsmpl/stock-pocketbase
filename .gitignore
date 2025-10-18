@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+.env
+pocketbase/pb_data/
