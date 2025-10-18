@@ -15,6 +15,7 @@
       "type": "select",
       "required": true,
       "options": {
+        "maxSelect": 1,
         "values": [
           "ADD_STOCK",
           "SALE",
