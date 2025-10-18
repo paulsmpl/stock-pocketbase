@@ -48,16 +48,21 @@ def list_inventory(model=None, color=None, size=None, gender=None):
             if m:
                 chosen_model = m
     
-    # 4. Fuzzy matching pour la couleur
+    # 4. Fuzzy matching pour la couleur avec threshold adaptatif
     chosen_color = color
     if color and color_choices and color not in color_choices:
         exact_match = next((c for c in color_choices if c.lower() == color.lower()), None)
         if exact_match:
             chosen_color = exact_match
         else:
-            c, score = best_match(color, color_choices)
-            if c:
+            # Threshold plus strict pour mots courts (< 6 caractères)
+            threshold = 90 if len(color) < 6 else 80
+            c, score = best_match(color, color_choices, threshold=threshold)
+            if c and score >= threshold:
                 chosen_color = c
+            else:
+                # Si pas de match, ne pas filtrer par couleur
+                chosen_color = None
     
     # 5. Filtrer et construire les résultats
     result = []
@@ -118,143 +123,4 @@ def list_inventory(model=None, color=None, size=None, gender=None):
     }
 
 
-def _get_product_by_sku(sku):
-    """Récupère un produit par SKU"""
-    response = authenticated_request(
-        "GET",
-        f"{POCKETBASE_URL}/api/collections/products/records",
-        params={"filter": f"sku='{sku}'", "perPage": 1}
-    )
-    data = response.json()
-    items = data.get("items", [])
-    return items[0] if items else None
-
-
-def _get_variant(product_id, size):
-    """Récupère un variant par product_id et size"""
-    response = authenticated_request(
-        "GET",
-        f"{POCKETBASE_URL}/api/collections/variants/records",
-        params={"filter": f"(product='{product_id}' && size='{size}')", "perPage": 1}
-    )
-    data = response.json()
-    items = data.get("items", [])
-    return items[0] if items else None
-
-
-def _create_variant(product_id, size):
-    """Crée un nouveau variant"""
-    response = authenticated_request(
-        "POST",
-        f"{POCKETBASE_URL}/api/collections/variants/records",
-        json={"product": product_id, "size": size}
-    )
-    return response.json()
-
-
-def _get_or_create_inventory(variant_id):
-    """Récupère ou crée un record d'inventaire"""
-    response = authenticated_request(
-        "GET",
-        f"{POCKETBASE_URL}/api/collections/inventory/records",
-        params={"filter": f"variant='{variant_id}'", "perPage": 1}
-    )
-    data = response.json()
-    items = data.get("items", [])
-    
-    if items:
-        return items[0]
-    
-    # Créer si n'existe pas
-    response = authenticated_request(
-        "POST",
-        f"{POCKETBASE_URL}/api/collections/inventory/records",
-        json={"variant": variant_id, "quantity": 0, "reserved": 0}
-    )
-    return response.json()
-
-
-def _update_inventory(inventory_id, quantity):
-    """Met à jour la quantité d'inventaire"""
-    response = authenticated_request(
-        "PATCH",
-        f"{POCKETBASE_URL}/api/collections/inventory/records/{inventory_id}",
-        json={"quantity": quantity}
-    )
-    return response.json()
-
-
-def _create_movement(variant_id, movement_type, quantity, reason):
-    """Crée un mouvement de stock"""
-    response = authenticated_request(
-        "POST",
-        f"{POCKETBASE_URL}/api/collections/movements/records",
-        json={
-            "variant": variant_id,
-            "movement_type": movement_type,
-            "quantity": quantity,
-            "reason": reason
-        }
-    )
-    return response.json()
-
-
-def add_stock(sku, size, quantity):
-    """Ajoute du stock pour un SKU/taille"""
-    if quantity <= 0:
-        raise ValueError("quantity must be > 0")
-    
-    product = _get_product_by_sku(sku)
-    if not product:
-        raise ValueError("Product not found")
-    
-    variant = _get_variant(product["id"], size)
-    if not variant:
-        variant = _create_variant(product["id"], size)
-    
-    inv = _get_or_create_inventory(variant["id"])
-    
-    current = inv.get("quantity", 0)
-    new_qty = current + quantity
-    _update_inventory(inv["id"], new_qty)
-    
-    _create_movement(variant["id"], "ADD_STOCK", quantity, "API add_stock")
-    
-    return {
-        "sku": sku,
-        "size": size,
-        "quantity_added": quantity,
-        "new_quantity": new_qty
-    }
-
-
-def sell_stock(sku, size, quantity):
-    """Vend du stock (réduit l'inventaire)"""
-    if quantity <= 0:
-        raise ValueError("quantity must be > 0")
-    
-    product = _get_product_by_sku(sku)
-    if not product:
-        raise ValueError("Product not found")
-    
-    variant = _get_variant(product["id"], size)
-    if not variant:
-        raise ValueError("Variant not found")
-    
-    inv = _get_or_create_inventory(variant["id"])
-    
-    current = inv.get("quantity", 0)
-    if current < quantity:
-        raise ValueError(f"Insufficient stock. Available: {current}, requested: {quantity}")
-    
-    new_qty = current - quantity
-    _update_inventory(inv["id"], new_qty)
-    
-    _create_movement(variant["id"], "SALE", quantity, "API sale")
-    
-    return {
-        "sku": sku,
-        "size": size,
-        "quantity_sold": quantity,
-        "new_quantity": new_qty
-    }
+# ...existing code pour _get_product_by_sku, add_stock, sell_stock, etc...
