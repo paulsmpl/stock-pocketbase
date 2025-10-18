@@ -1,42 +1,78 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
-from app.core.pb_client import get_pb
+from fastapi import APIRouter
+import requests
+from datetime import datetime
 
 router = APIRouter(prefix="/movements", tags=["Movements"])
 
+POCKETBASE_URL = "http://pocketbase:8090"
+
 @router.get("")
-def list_movements(
-    sku: Optional[str] = Query(None),
-    size: Optional[str] = Query(None),
-    type: Optional[str] = Query(None, description="ADD_STOCK | SALE | RETURN | RESERVE | RELEASE"),
-    limit: int = 50
-):
-    try:
-        pb = get_pb()
-        # build simple filter by joining conditions
-        filters = []
-        if type:
-            filters.append(f"movement_type='{type}'")
-        # We'll expand variant and product then filter in Python for sku/size
-        recs = pb.collection("movements").get_list(1, limit, query_params={"expand": "variant,variant.product"})
-        out = []
-        for r in recs.items:
-            variant = r.expand.get("variant") if r.expand else None
-            product = variant.expand.get("product") if variant and variant.expand else None
-            if sku and product and product.get("sku") != sku:
-                continue
-            if size and variant and variant.get("size") != size:
-                continue
-            if type and r.get("movement_type") != type:
-                continue
-            out.append({
-                "sku": product.get("sku") if product else None,
-                "size": variant.get("size") if variant else None,
-                "movement_type": r.get("movement_type"),
-                "quantity": r.get("quantity"),
-                "timestamp": r.get("timestamp"),
-                "reason": r.get("reason"),
-            })
-        return {"items": out}
-    except Exception as e:
-        raise HTTPException(400, detail=str(e))
+def list_movements(sku: str = None, limit: int = 100):
+    """Liste les mouvements de stock avec filtre optionnel par SKU"""
+    
+    # Construire le filtre
+    params = {
+        "expand": "variant,variant.product",
+        "perPage": limit,
+        "sort": "-created"
+    }
+    
+    if sku:
+        # On doit d'abord trouver le produit par SKU
+        product_response = requests.get(
+            f"{POCKETBASE_URL}/api/collections/products/records",
+            params={"filter": f"sku='{sku}'", "perPage": 1}
+        )
+        product_response.raise_for_status()
+        product_data = product_response.json()
+        
+        if not product_data.get("items"):
+            return {"movements": []}
+        
+        product_id = product_data["items"][0]["id"]
+        
+        # Trouver tous les variants de ce produit
+        variants_response = requests.get(
+            f"{POCKETBASE_URL}/api/collections/variants/records",
+            params={"filter": f"product='{product_id}'", "perPage": 500}
+        )
+        variants_response.raise_for_status()
+        variants_data = variants_response.json()
+        
+        variant_ids = [v["id"] for v in variants_data.get("items", [])]
+        
+        if not variant_ids:
+            return {"movements": []}
+        
+        # Filtrer les mouvements par ces variants
+        variant_filter = " || ".join([f"variant='{vid}'" for vid in variant_ids])
+        params["filter"] = f"({variant_filter})"
+    
+    # Récupérer les mouvements
+    response = requests.get(
+        f"{POCKETBASE_URL}/api/collections/movements/records",
+        params=params
+    )
+    response.raise_for_status()
+    data = response.json()
+    
+    movements = []
+    for item in data.get("items", []):
+        expand = item.get("expand", {})
+        variant = expand.get("variant", {})
+        variant_expand = variant.get("expand", {})
+        product = variant_expand.get("product", {})
+        
+        movements.append({
+            "id": item.get("id"),
+            "sku": product.get("sku"),
+            "model": product.get("name"),
+            "size": variant.get("size"),
+            "movement_type": item.get("movement_type"),
+            "quantity": item.get("quantity"),
+            "reason": item.get("reason"),
+            "created": item.get("created"),
+            "updated": item.get("updated")
+        })
+    
+    return {"movements": movements}

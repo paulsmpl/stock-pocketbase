@@ -1,26 +1,44 @@
-from fastapi import APIRouter, HTTPException
-from app.core.pb_client import get_pb
+from fastapi import APIRouter
+import requests
 
 router = APIRouter(prefix="/models", tags=["Models"])
 
+POCKETBASE_URL = "http://pocketbase:8090"
+
 @router.get("")
 def list_models():
-    try:
-        pb = get_pb()
-        recs = pb.collection("products").get_full_list()
-        out = []
-        for r in recs:
-            d = {
-                "id": r.id,
-                "sku": getattr(r, "sku", None),
-                "name": getattr(r, "name", None),
-                "color": getattr(r, "color", None),
-                "gender": getattr(r, "gender", None),
-                "cost": getattr(r, "cost", None),
-                "price": getattr(r, "price", None),
-                "photo": getattr(r, "photo", None)
-            }
-            out.append(d)
-        return {"items": out}
-    except Exception as e:
-        raise HTTPException(400, detail=str(e))
+    """Liste tous les modèles disponibles avec leurs variantes"""
+    response = requests.get(
+        f"{POCKETBASE_URL}/api/collections/products/records",
+        params={"perPage": 500}
+    )
+    response.raise_for_status()
+    data = response.json()
+    
+    models = {}
+    for product in data.get("items", []):
+        name = product.get("name")
+        if name:
+            if name not in models:
+                models[name] = {
+                    "name": name,
+                    "colors": set(),
+                    "genders": set()
+                }
+            color = product.get("color")
+            gender = product.get("gender")
+            if color:
+                models[name]["colors"].add(color)
+            if gender:
+                models[name]["genders"].add(gender)
+    
+    # Convertir les sets en listes
+    result = []
+    for model in models.values():
+        result.append({
+            "name": model["name"],
+            "colors": sorted(list(model["colors"])),
+            "genders": sorted(list(model["genders"]))
+        })
+    
+    return {"models": sorted(result, key=lambda x: x["name"])}
