@@ -1,0 +1,35 @@
+{
+  "name": "products",
+  "type": "base",
+  "schema": [
+    {
+      "name": "sku",
+      "type": "text",
+      "required": true,
+      "unique": true
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "color",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "photo",
+      "type": "file",
+      "required": false,
+      "options": {
+        "maxSelect": 1
+      }
+    }
+  ]
+}

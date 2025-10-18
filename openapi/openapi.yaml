@@ -1,0 +1,86 @@
+openapi: 3.1.0
+info:
+  title: Stock Assistant API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+paths:
+  /inventory:
+    get:
+      summary: List inventory with optional filters
+      parameters:
+        - in: query
+          name: model
+          schema: { type: string }
+        - in: query
+          name: color
+          schema: { type: string }
+        - in: query
+          name: size
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+  /inventory/add_stock:
+    post:
+      summary: Add stock for a sku+size
+      parameters:
+        - in: query
+          name: sku
+          required: true
+          schema: { type: string }
+        - in: query
+          name: size
+          required: true
+          schema: { type: string }
+        - in: query
+          name: quantity
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+  /inventory/sale:
+    post:
+      summary: Register a sale (decrement stock)
+      parameters:
+        - in: query
+          name: sku
+          required: true
+          schema: { type: string }
+        - in: query
+          name: size
+          required: true
+          schema: { type: string }
+        - in: query
+          name: quantity
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+  /models:
+    get:
+      summary: List models (products)
+      responses:
+        "200":
+          description: OK
+  /movements:
+    get:
+      summary: List stock movements with optional filters
+      parameters:
+        - in: query
+          name: sku
+          schema: { type: string }
+        - in: query
+          name: size
+          schema: { type: string }
+        - in: query
+          name: type
+          schema: { type: string, enum: [ADD_STOCK, SALE, RETURN, RESERVE, RELEASE] }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        "200":
+          description: OK

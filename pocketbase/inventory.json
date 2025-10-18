@@ -1,0 +1,30 @@
+{
+  "name": "inventory",
+  "type": "base",
+  "schema": [
+    {
+      "name": "variant",
+      "type": "relation",
+      "required": true,
+      "options": {
+        "collectionId": "variants"
+      }
+    },
+    {
+      "name": "quantity",
+      "type": "number",
+      "required": true,
+      "options": {
+        "min": 0
+      }
+    },
+    {
+      "name": "reserved",
+      "type": "number",
+      "required": false,
+      "options": {
+        "min": 0
+      }
+    }
+  ]
+}

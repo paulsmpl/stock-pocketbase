@@ -1,0 +1,27 @@
+services:
+  api:
+    build: ./backend
+    env_file: ./backend/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - pocketbase
+    volumes:
+      - ./backend/app:/app/app
+
+  pocketbase:
+    build: ./pocketbase
+    environment:
+      POCKETBASE_URL: "http://localhost:8090"
+      POCKETBASE_EMAIL: "admin@example.com"
+      POCKETBASE_PASSWORD: "admin123"
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./pocketbase/pb_data:/pb/pb_data
+    command: >
+      sh -c "./pocketbase serve --http 0.0.0.0:8090 &
+             until curl -sf http://localhost:8090/api/health >/dev/null; do
+               echo 'waiting pocketbase...'; sleep 1;
+             done;
+             python3 /pb/init_collections.py"

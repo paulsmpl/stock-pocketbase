@@ -1,0 +1,6 @@
+fastapi==0.115.5
+uvicorn[standard]==0.30.6
+pocketbase==0.9.1
+python-dotenv==1.0.1
+rapidfuzz==3.9.3
+requests==2.32.3

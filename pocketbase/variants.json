@@ -1,0 +1,24 @@
+{
+  "name": "variants",
+  "type": "base",
+  "schema": [
+    {
+      "name": "product",
+      "type": "relation",
+      "required": true,
+      "options": {
+        "collectionId": "products"
+      }
+    },
+    {
+      "name": "size",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "barcode",
+      "type": "text",
+      "required": false
+    }
+  ]
+}

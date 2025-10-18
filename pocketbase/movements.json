@@ -1,0 +1,43 @@
+{
+  "name": "movements",
+  "type": "base",
+  "schema": [
+    {
+      "name": "variant",
+      "type": "relation",
+      "required": true,
+      "options": {
+        "collectionId": "variants"
+      }
+    },
+    {
+      "name": "movement_type",
+      "type": "select",
+      "required": true,
+      "options": {
+        "values": [
+          "ADD_STOCK",
+          "SALE",
+          "RETURN",
+          "RESERVE",
+          "RELEASE"
+        ]
+      }
+    },
+    {
+      "name": "quantity",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "reason",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "timestamp",
+      "type": "date",
+      "required": false
+    }
+  ]
+}
