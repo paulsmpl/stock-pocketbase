@@ -28,7 +28,8 @@
       "type": "file",
       "required": false,
       "options": {
-        "maxSelect": 1
+        "maxSelect": 1,
+        "maxSize": 5242880
       }
     }
   ]
