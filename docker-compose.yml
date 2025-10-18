@@ -49,8 +49,8 @@ services:
     build: ./pocketbase
     environment:
       POCKETBASE_URL: "http://localhost:8090"
-      POCKETBASE_EMAIL: "admin@example.com"
-      POCKETBASE_PASSWORD: "admin123456789"
+      POCKETBASE_EMAIL: admin@stock.local
+      POCKETBASE_PASSWORD: VotreSuperMotDePasseSecurisé123!
     expose:
       - "8090"
     volumes:
@@ -65,9 +65,7 @@ services:
              wait $$PB_PID"
     networks:
       - stock-network
-    environment:
-      POCKETBASE_EMAIL: admin@stock.local
-      POCKETBASE_PASSWORD: VotreSuperMotDePasseSecurisé123!
+
 networks:
   stock-network:
     driver: bridge
