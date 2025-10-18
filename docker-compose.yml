@@ -46,7 +46,7 @@ services:
       POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_PASSWORD:-VotreSuperMotDePasseSecurisé123!}
   
 
-    pocketbase:
+  pocketbase:
     build: ./pocketbase
     restart: unless-stopped
     volumes:
