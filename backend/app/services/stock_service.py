@@ -12,19 +12,30 @@ def list_inventory(model=None, color=None, size=None, gender=None):
     
     for rec in records:
         try:
-            expand = getattr(rec, "expand", {})
+            expand = getattr(rec, "expand", None)
+            if not expand:
+                continue
+            
             variant = getattr(expand, "variant", None)
-            if variant:
-                v_expand = getattr(variant, "expand", {})
-                product = getattr(v_expand, "product", None)
-                if product:
-                    pname = getattr(product, "name", None)
-                    pcolor = getattr(product, "color", None)
-                    if pname and pname not in model_choices:
-                        model_choices.append(pname)
-                    if pcolor and pcolor not in color_choices:
-                        color_choices.append(pcolor)
-        except:
+            if not variant:
+                continue
+            
+            v_expand = getattr(variant, "expand", None)
+            if not v_expand:
+                continue
+            
+            product = getattr(v_expand, "product", None)
+            if not product:
+                continue
+            
+            pname = getattr(product, "name", None)
+            pcolor = getattr(product, "color", None)
+            if pname and pname not in model_choices:
+                model_choices.append(pname)
+            if pcolor and pcolor not in color_choices:
+                color_choices.append(pcolor)
+        except Exception as e:
+            print(f"Error collecting choices: {e}")
             pass
     
     chosen_model = model
