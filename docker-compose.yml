@@ -44,31 +44,45 @@ services:
     environment:
       POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_EMAIL:-admin@stock.local}
       POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_PASSWORD:-VotreSuperMotDePasseSecurisé123!}
-  
 
   pocketbase:
     build: ./pocketbase
     restart: unless-stopped
     volumes:
       - ./pocketbase/pb_data:/pb/pb_data
-      - ./pocketbase/init_collections.py:/pb/init_collections.py
-      - ./data/stock_initial.csv:/pb/stock_initial.csv
-      - ./data/cost_mapping.csv:/pb/cost_mapping.csv
+      - ./pocketbase/init_collections.py:/pb/init_collections.py:ro
+      - ./pocketbase/stock_initial.csv:/pb/stock_initial.csv:ro      # ✅ Bon chemin
+      - ./pocketbase/cost_mapping.csv:/pb/cost_mapping.csv:ro        # ✅ Bon chemin
     environment:
-      POCKETBASE_EMAIL: admin@stock.local
-      POCKETBASE_PASSWORD: VotreSuperMotDePasseSecurisé123!
+      POCKETBASE_URL: http://localhost:8090
+      POCKETBASE_ADMIN_EMAIL: admin@stock.local
+      POCKETBASE_ADMIN_PASSWORD: VotreSuperMotDePasseSecurisé123!
     expose:
       - "8090"
     networks:
       - stock-network
     command: >
       sh -c "
-        /pb/pocketbase serve --http=0.0.0.0:8090 &
-        sleep 10 &&
-        /pb/pocketbase admin create admin@stock.local VotreSuperMotDePasseSecurisé123! 2>/dev/null || echo 'Admin existe déjà' &&
-        python3 /pb/init_collections.py || echo 'Init collections échoué' &&
-        wait
+      /pb/pocketbase serve --http=0.0.0.0:8090 &
+      PB_PID=$$!
+      sleep 10
+      if [ ! -f /pb/pb_data/data.db ]; then
+        echo '🔐 Création admin...'
+        /pb/pocketbase admin create admin@stock.local VotreSuperMotDePasseSecurisé123! 2>/dev/null || echo '✅ Admin existe déjà'
+      fi
+      if command -v python3 >/dev/null 2>&1; then
+        echo '📋 Vérification des fichiers CSV...'
+        ls -lh /pb/*.csv 2>&1
+        echo '--- stock_initial.csv ---'
+        head -2 /pb/stock_initial.csv 2>&1
+        echo '--- cost_mapping.csv ---'
+        head -2 /pb/cost_mapping.csv 2>&1
+        echo '🚀 Lancement init_collections.py...'
+        cd /pb && python3 init_collections.py 2>&1 || echo '❌ Init collections échoué'
+      fi
+      wait $$PB_PID
       "
+
 networks:
   stock-network:
     driver: bridge
