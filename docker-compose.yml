@@ -68,10 +68,10 @@ services:
         /pb/pocketbase serve --http=0.0.0.0:8090 &
         PB_PID=$$!
         sleep 10
-        if [ ! -f /pb/pb_data/data.db ]; then
-          echo '🔐 Création admin...'
-          /pb/pocketbase admin create admin@stock.local VotreSuperMotDePasseSecurisé123! 2>/dev/null || echo '✅ Admin existe déjà'
-        fi
+        
+        echo '🔐 Création/vérification admin...'
+        /pb/pocketbase admin create admin@stock.local VotreSuperMotDePasseSecurisé123! 2>&1 || echo '✅ Admin existe déjà'
+        
         if command -v python3 >/dev/null 2>&1; then
           echo '📋 Vérification des fichiers CSV...'
           ls -lh /pb/*.csv 2>&1 || echo 'Pas de CSV'
@@ -82,6 +82,7 @@ services:
           echo '🚀 Lancement init_collections.py...'
           cd /pb && python3 init_collections.py 2>&1 || echo '❌ Init collections échoué'
         fi
+        
         wait $PB_PID
 
 networks:
