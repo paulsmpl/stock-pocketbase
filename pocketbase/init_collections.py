@@ -13,7 +13,6 @@ def authenticate():
     """Authentification admin PocketBase"""
     print(f"🔐 Authentification en tant que {ADMIN_EMAIL}...")
     
-    # Attendre que PocketBase soit prêt
     for i in range(10):
         try:
             response = requests.post(
@@ -32,82 +31,148 @@ def authenticate():
     print(f"❌ Erreur d'authentification après 10 tentatives")
     exit(1)
 
+def get_collection_id(headers, collection_name):
+    """Récupérer l'ID d'une collection"""
+    try:
+        response = requests.get(
+            f"{POCKETBASE_URL}/api/collections/{collection_name}",
+            headers=headers
+        )
+        if response.status_code == 200:
+            return response.json()["id"]
+    except:
+        pass
+    return None
+
 def create_collections(headers):
     """Créer les collections si elles n'existent pas"""
     print("📦 Création des collections...")
     
-    collections = {
-        "products": {
-            "name": "products",
-            "type": "base",
-            "schema": [
-                {"name": "sku", "type": "text", "required": True, "options": {"min": 1, "max": 50}},
-                {"name": "name", "type": "text", "required": True, "options": {"min": 1, "max": 200}},
-                {"name": "color", "type": "text", "required": False, "options": {"max": 100}},
-                {"name": "gender", "type": "text", "required": False, "options": {"max": 50}},
-                {"name": "cost", "type": "number", "required": False},
-                {"name": "price", "type": "number", "required": False}
-            ],
-            "indexes": ["CREATE UNIQUE INDEX idx_products_sku ON products (sku)"]
-        },
-        "variants": {
-            "name": "variants",
-            "type": "base",
-            "schema": [
-                {"name": "product", "type": "relation", "required": True, "options": {"collectionId": "", "cascadeDelete": True, "maxSelect": 1}},
-                {"name": "size", "type": "text", "required": True, "options": {"max": 10}}
-            ],
-            "indexes": ["CREATE UNIQUE INDEX idx_variants_product_size ON variants (product, size)"]
-        },
-        "inventory": {
-            "name": "inventory",
-            "type": "base",
-            "schema": [
-                {"name": "variant", "type": "relation", "required": True, "options": {"collectionId": "", "cascadeDelete": True, "maxSelect": 1}},
-                {"name": "quantity", "type": "number", "required": True},
-                {"name": "reserved", "type": "number", "required": False}
-            ],
-            "indexes": ["CREATE UNIQUE INDEX idx_inventory_variant ON inventory (variant)"]
-        },
-        "movements": {
-            "name": "movements",
-            "type": "base",
-            "schema": [
-                {"name": "variant", "type": "relation", "required": True, "options": {"collectionId": "", "cascadeDelete": False, "maxSelect": 1}},
-                {"name": "type", "type": "select", "required": True, "options": {"values": ["entry", "exit", "reservation", "unreservation", "adjustment"]}},
-                {"name": "quantity", "type": "number", "required": True},
-                {"name": "reason", "type": "text", "required": False, "options": {"max": 500}},
-                {"name": "reference", "type": "text", "required": False, "options": {"max": 100}}
-            ]
-        }
+    # Étape 1: Créer products sans dépendances
+    products_schema = {
+        "name": "products",
+        "type": "base",
+        "schema": [
+            {"name": "sku", "type": "text", "required": True, "options": {"min": 1, "max": 50}},
+            {"name": "name", "type": "text", "required": True, "options": {"min": 1, "max": 200}},
+            {"name": "color", "type": "text", "required": False, "options": {"max": 100}},
+            {"name": "gender", "type": "text", "required": False, "options": {"max": 50}},
+            {"name": "cost", "type": "number", "required": False},
+            {"name": "price", "type": "number", "required": False}
+        ],
+        "indexes": ["CREATE UNIQUE INDEX idx_products_sku ON products (sku)"]
     }
     
-    for coll_name, coll_data in collections.items():
-        try:
-            # Vérifier si existe
-            response = requests.get(
-                f"{POCKETBASE_URL}/api/collections/{coll_name}",
-                headers=headers
-            )
-            if response.status_code == 200:
-                print(f"  ✅ Collection '{coll_name}' existe déjà")
-                continue
-        except:
-            pass
-        
-        # Créer la collection
-        try:
-            response = requests.post(
-                f"{POCKETBASE_URL}/api/collections",
-                headers=headers,
-                json=coll_data
-            )
-            if response.status_code == 200:
-                print(f"  ✅ Collection '{coll_name}' créée")
-            else:
-                print(f"  ❌ Erreur création '{coll_name}': {response.text}")
-        except Exception as e:
-            print(f"  ❌ Exception '{coll_name}': {e}")
+    products_id = get_collection_id(headers, "products")
+    if not products_id:
+        response = requests.post(
+            f"{POCKETBASE_URL}/api/collections",
+            headers=headers,
+            json=products_schema
+        )
+        if response.status_code == 200:
+            products_id = response.json()["id"]
+            print(f"  ✅ Collection 'products' créée (ID: {products_id})")
+        else:
+            print(f"  ❌ Erreur création 'products': {response.text}")
+            return
+    else:
+        print(f"  ✅ Collection 'products' existe déjà (ID: {products_id})")
+    
+    # Étape 2: Créer variants avec la relation vers products
+    variants_schema = {
+        "name": "variants",
+        "type": "base",
+        "schema": [
+            {"name": "product", "type": "relation", "required": True, "options": {
+                "collectionId": products_id,  # ✅ ID de products
+                "cascadeDelete": True,
+                "maxSelect": 1
+            }},
+            {"name": "size", "type": "text", "required": True, "options": {"max": 10}}
+        ],
+        "indexes": ["CREATE UNIQUE INDEX idx_variants_product_size ON variants (product, size)"]
+    }
+    
+    variants_id = get_collection_id(headers, "variants")
+    if not variants_id:
+        response = requests.post(
+            f"{POCKETBASE_URL}/api/collections",
+            headers=headers,
+            json=variants_schema
+        )
+        if response.status_code == 200:
+            variants_id = response.json()["id"]
+            print(f"  ✅ Collection 'variants' créée (ID: {variants_id})")
+        else:
+            print(f"  ❌ Erreur création 'variants': {response.text}")
+            return
+    else:
+        print(f"  ✅ Collection 'variants' existe déjà (ID: {variants_id})")
+    
+    # Étape 3: Créer inventory avec la relation vers variants
+    inventory_schema = {
+        "name": "inventory",
+        "type": "base",
+        "schema": [
+            {"name": "variant", "type": "relation", "required": True, "options": {
+                "collectionId": variants_id,  # ✅ ID de variants
+                "cascadeDelete": True,
+                "maxSelect": 1
+            }},
+            {"name": "quantity", "type": "number", "required": True},
+            {"name": "reserved", "type": "number", "required": False}
+        ],
+        "indexes": ["CREATE UNIQUE INDEX idx_inventory_variant ON inventory (variant)"]
+    }
+    
+    inventory_id = get_collection_id(headers, "inventory")
+    if not inventory_id:
+        response = requests.post(
+            f"{POCKETBASE_URL}/api/collections",
+            headers=headers,
+            json=inventory_schema
+        )
+        if response.status_code == 200:
+            print(f"  ✅ Collection 'inventory' créée")
+        else:
+            print(f"  ❌ Erreur création 'inventory': {response.text}")
+            return
+    else:
+        print(f"  ✅ Collection 'inventory' existe déjà")
+    
+    # Étape 4: Créer movements
+    movements_schema = {
+        "name": "movements",
+        "type": "base",
+        "schema": [
+            {"name": "variant", "type": "relation", "required": True, "options": {
+                "collectionId": variants_id,  # ✅ ID de variants
+                "cascadeDelete": False,
+                "maxSelect": 1
+            }},
+            {"name": "type", "type": "select", "required": True, "options": {
+                "values": ["entry", "exit", "reservation", "unreservation", "adjustment"]
+            }},
+            {"name": "quantity", "type": "number", "required": True},
+            {"name": "reason", "type": "text", "required": False, "options": {"max": 500}},
+            {"name": "reference", "type": "text", "required": False, "options": {"max": 100}}
+        ]
+    }
+    
+    movements_id = get_collection_id(headers, "movements")
+    if not movements_id:
+        response = requests.post(
+            f"{POCKETBASE_URL}/api/collections",
+            headers=headers,
+            json=movements_schema
+        )
+        if response.status_code == 200:
+            print(f"  ✅ Collection 'movements' créée")
+        else:
+            print(f"  ❌ Erreur création 'movements': {response.text}")
+    else:
+        print(f"  ✅ Collection 'movements' existe déjà")
 
 def load_cost_mapping():
     """Charge les coûts depuis cost_mapping.csv"""
@@ -157,10 +222,8 @@ if __name__ == "__main__":
                 size = row['Pointure']
                 quantity = int(row['Quantité'])
                 
-                # Récupérer le coût et prix
                 cost_info = cost_map.get(sku, {'cost': 0, 'price': 0, 'source': 'Non défini'})
                 
-                # Créer ou récupérer le produit
                 if sku not in products_map:
                     product_data = {
                         "sku": sku,
@@ -184,7 +247,6 @@ if __name__ == "__main__":
                         print(f"  ❌ Erreur produit SKU {sku}: {response.text}")
                         continue
                 
-                # Créer le variant
                 product_id = products_map[sku]
                 variant_key = f"{sku}|{size}"
                 
@@ -206,7 +268,6 @@ if __name__ == "__main__":
                         print(f"  ❌ Erreur variant SKU {sku} taille {size}: {response.text}")
                         continue
                 
-                # Créer l'inventaire
                 variant_id = variants_map[variant_key]
                 
                 inventory_data = {
