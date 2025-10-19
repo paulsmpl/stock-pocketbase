@@ -24,7 +24,7 @@ services:
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
     ports:
-      - "4040:4040"  # Ngrok web UI
+      - "4040:4040"
     depends_on:
       - caddy
     networks:
@@ -51,8 +51,8 @@ services:
     volumes:
       - ./pocketbase/pb_data:/pb/pb_data
       - ./pocketbase/init_collections.py:/pb/init_collections.py:ro
-      - ./pocketbase/stock_initial.csv:/pb/stock_initial.csv:ro      # ✅ Bon chemin
-      - ./pocketbase/cost_mapping.csv:/pb/cost_mapping.csv:ro        # ✅ Bon chemin
+      - ./pocketbase/stock_initial.csv:/pb/stock_initial.csv:ro
+      - ./pocketbase/cost_mapping.csv:/pb/cost_mapping.csv:ro
     environment:
       POCKETBASE_URL: http://localhost:8090
       POCKETBASE_ADMIN_EMAIL: admin@stock.local
@@ -61,27 +61,28 @@ services:
       - "8090"
     networks:
       - stock-network
-    command: >
-      sh -c "
-      /pb/pocketbase serve --http=0.0.0.0:8090 &
-      PB_PID=$$!
-      sleep 10
-      if [ ! -f /pb/pb_data/data.db ]; then
-        echo '🔐 Création admin...'
-        /pb/pocketbase admin create admin@stock.local VotreSuperMotDePasseSecurisé123! 2>/dev/null || echo '✅ Admin existe déjà'
-      fi
-      if command -v python3 >/dev/null 2>&1; then
-        echo '📋 Vérification des fichiers CSV...'
-        ls -lh /pb/*.csv 2>&1
-        echo '--- stock_initial.csv ---'
-        head -2 /pb/stock_initial.csv 2>&1
-        echo '--- cost_mapping.csv ---'
-        head -2 /pb/cost_mapping.csv 2>&1
-        echo '🚀 Lancement init_collections.py...'
-        cd /pb && python3 init_collections.py 2>&1 || echo '❌ Init collections échoué'
-      fi
-      wait $$PB_PID
-      "
+    command:
+      - /bin/sh
+      - -c
+      - |
+        /pb/pocketbase serve --http=0.0.0.0:8090 &
+        PB_PID=$$!
+        sleep 10
+        if [ ! -f /pb/pb_data/data.db ]; then
+          echo '🔐 Création admin...'
+          /pb/pocketbase admin create admin@stock.local VotreSuperMotDePasseSecurisé123! 2>/dev/null || echo '✅ Admin existe déjà'
+        fi
+        if command -v python3 >/dev/null 2>&1; then
+          echo '📋 Vérification des fichiers CSV...'
+          ls -lh /pb/*.csv 2>&1 || echo 'Pas de CSV'
+          echo '--- stock_initial.csv ---'
+          head -2 /pb/stock_initial.csv 2>&1 || echo 'Fichier manquant'
+          echo '--- cost_mapping.csv ---'
+          head -2 /pb/cost_mapping.csv 2>&1 || echo 'Fichier manquant'
+          echo '🚀 Lancement init_collections.py...'
+          cd /pb && python3 init_collections.py 2>&1 || echo '❌ Init collections échoué'
+        fi
+        wait $PB_PID
 
 networks:
   stock-network:
